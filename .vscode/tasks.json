@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/MangaCollector.csproj"
+                "${workspaceFolder}/AeroMangaCollector.csproj"
             ],
             "problemMatcher": "$msCompile"
         }

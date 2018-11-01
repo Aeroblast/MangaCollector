@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.DrawingCore;
 using System.Text;
 using System.Net;
@@ -9,41 +10,22 @@ namespace MangaCollector
 {
     class Program
     {
-        static string tempPath = @"temp";
+        static string tempPath = @"";
         static string userAgent = "";
         static void Main(string[] args)
         {
+            if (tempPath.Length > 0) Directory.CreateDirectory(tempPath);
 
             if (File.Exists("list.txt"))
             {
                 ListSteal("list.txt");
             }
-        }
-        static void Test()
-        {
-            DirectoryInfo[] ds = new DirectoryInfo("temp").GetDirectories();
-            foreach (DirectoryInfo d in ds)
+            if (File.Exists("imglist.txt"))
             {
-                string h = "";
-                if (d.Name.Contains("青柠"))
-                {
-                    h = "[青柠漢化組]";
-                }
-                if (d.Name.Contains("Kirara"))
-                {
-                    h = "[Kirara漢化組]";
-                }
-                if (h == "") continue;
-                for (int i = 1; i < 30; i++)
-                {
-                    if (d.Name.Contains(NumToNo(i, 2)))
-                    {
-                        Directory.Move(d.FullName, "(まんがタイムきららＭＡＸ)[はんざわかおり] Comic Girls 第" + NumToNo(i, 2) + "話" + h);
-                    }
-                }
+                ListDownload("imglist.txt");
             }
-
         }
+
         static void ListSteal(string path)
         {
             string[] lines = File.ReadAllLines(path);
@@ -52,12 +34,14 @@ namespace MangaCollector
                 if (p.Contains("yamibo.com"))
                 {
                     StealImages_Yamibo(p, tempPath);
+                    continue;
                 }
                 if (p.Contains("tieba.baidu.com"))
                 {
                     StealImages_Tieba(p, tempPath);
+                    continue;
                 }
-                if (p.Contains("2cat.cf"))
+                if (p.Contains("2cat"))
                 {
                     string[] cmd = p.Split(" ");
                     if (cmd.Length == 3)
@@ -68,7 +52,18 @@ namespace MangaCollector
                     {
                         StealImages_Komica("", cmd[0]);
                     }
+                    continue;
                 }
+            }
+        }
+        static void ListDownload(string path)
+        {
+            string[] lines = File.ReadAllLines(path);
+            int i = 0;
+            foreach (string p in lines)
+            {
+                i++;
+                ImageSteal(p, NumToNo(i, 3) + ".jpg");
             }
         }
         static void SavePage(string url, string cookieStr = "", string tempFilePath = "temp.html")
@@ -86,11 +81,11 @@ namespace MangaCollector
         static void ImageSteal(string imageUrl, string savePath, string referer = "", string cookieStr = "")
         {
             Console.WriteLine("Stealing: " + imageUrl);
-            HttpWebRequest r = (HttpWebRequest)HttpWebRequest.Create(imageUrl);
-            r.Headers.Add("Cookie", cookieStr);
-            r.Referer = referer;
             try
             {
+                HttpWebRequest r = (HttpWebRequest)HttpWebRequest.Create(imageUrl);
+                r.Headers.Add("Cookie", cookieStr);
+                r.Referer = referer;
                 Stream stm = r.GetResponse().GetResponseStream();
                 Stream stream = new FileStream(savePath, FileMode.Create);
                 byte[] bArr = new byte[1024];
@@ -102,12 +97,11 @@ namespace MangaCollector
                 }
                 stream.Close();
                 stm.Close();
-
+                Console.WriteLine("Saved: " + savePath);
 
             }
-            catch (Exception e) { Console.WriteLine("ImageSteal:\n" + e); }
-
-            Console.WriteLine("Saved: " + savePath);
+            catch (Exception e)
+            { Console.WriteLine("ImageSteal:\n" + e); }
         }
         static void MassSteal(string src, string path)
         {
@@ -135,7 +129,10 @@ namespace MangaCollector
 
         static void StealImages_Komica(string dir, string url, string startName = "", string endName = "")
         {
-            string doman = "https://2cat.cf";
+            Console.WriteLine("----Komica Collect Function Start----\nString:"
+                +url+"\nfrom "+startName+" to "+endName);
+            Uri uri=new Uri(url);
+            string doman=uri.Scheme+ "://"+uri.Host;
             string tempFilePath = Path.Combine(dir, "Temp.html");
             SavePage(url, "", tempFilePath);
             Console.WriteLine("文档Get！");
@@ -177,7 +174,7 @@ namespace MangaCollector
             File.Delete(tempFilePath);
 
         }
-        static void StealImages_Tieba(string url, string dir, int minWid = 800, int max = 50)
+        static void StealImages_Tieba(string url, string dir, int minWid = 700, int max = 50)
         {
             string saveDir = dir;
             Directory.CreateDirectory(saveDir);
@@ -203,8 +200,8 @@ namespace MangaCollector
                 string src = content.Substring(startIndex + 5, content.IndexOf("\"", startIndex + 5) - startIndex - 5);
 
                 ImageSteal(img + src.Substring(src.LastIndexOf('/')), tempImagePath, "");
-                Image imgTemp;
-                if ((imgTemp = Image.FromFile(tempImagePath)).Width < minWid)
+                Image imgTemp = Image.FromFile(tempImagePath);
+                if (imgTemp.Width < minWid)
                 {
                     imgTemp.Dispose();
                     File.Delete(tempImagePath);
@@ -280,9 +277,11 @@ namespace MangaCollector
         }
         static void StealImages_Yamibo(string url, string dir, int minWid = 800, int max = 50)
         {
+            Console.WriteLine("----Yamibo Collect Function Start----");
+            Console.WriteLine("src:" + url);
+            List<string> imgUrls = new List<string>();
             string saveDir = dir;
-            Directory.CreateDirectory(dir);
-            string tempFilePath = Path.Combine(dir, "Temp.html");
+            string tempFilePath = Path.Combine(saveDir, "Temp.html");
             string[] keys = new string[] { "zoomfile=\"" };
             string cookieStr = "";
             try { cookieStr = File.ReadAllText("cookies_yamibo"); }
@@ -301,17 +300,30 @@ namespace MangaCollector
                 saveDir = Path.Combine(saveDir, title);
                 Directory.CreateDirectory(saveDir);
             }
-            Regex regex = new Regex("zoomfile=\"(.*?)\"");
+            Regex regex = new Regex("file=\"(.*?)\"");
             MatchCollection matchCollection = regex.Matches(content);
             int i = 0;
             foreach (Match m in matchCollection)
             {
+
+                string imgUrl = m.Groups[1].Value;
+                if (imgUrl.IndexOf("http") != 0)
+                {
+                    imgUrl = "https://bbs.yamibo.com/" + imgUrl;
+                }
+                if (imgUrls.Contains(imgUrl))
+                {
+                    Console.WriteLine("重复的URL");
+                    continue;
+                }
                 i++;
-                string imgUrl = "https://bbs.yamibo.com/" + m.Groups[1].Value;
                 ImageSteal(imgUrl, Path.Combine(saveDir, NumToNo(i, 3) + ".jpg"), "", cookieStr);
+                imgUrls.Add(imgUrl);
             }
             File.Delete(tempFilePath);
+            Console.WriteLine("----Yamibo Collect Function End----\n");
         }
+
         static string NumToNo(int i, int n)//将一个100以内数字转换成n位的编号
         {
             string r = i.ToString();
