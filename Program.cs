@@ -54,6 +54,12 @@ namespace MangaCollector
                     }
                     continue;
                 }
+                if (p.Contains("bilibili"))
+                {
+                    
+                    StealImages_BilibiliManga("",p.Substring("bilibili:".Length));
+                    continue;
+                }
             }
         }
         static void ListDownload(string path)
@@ -324,6 +330,23 @@ namespace MangaCollector
             Console.WriteLine("----Yamibo Collect Function End----\n");
         }
 
+        static void StealImages_BilibiliManga(string dir,string txtpath)
+        {
+            string savedir=Path.Combine(dir,"bilimanga");
+            Directory.CreateDirectory(savedir);
+            string txt=File.ReadAllText(txtpath);
+            Regex imgToken=new Regex("{\"url\":\"(http://i0.hdslb.com/bfs/manga/.*?jpg)\",\"token\":\"(.*?)\"}");
+            MatchCollection matches= imgToken.Matches(txt);
+            int i=1;
+            foreach(Match match in matches)
+            {
+                
+                string url=match.Groups[1].Value+"?token="+match.Groups[2].Value;
+                Console.WriteLine(url);
+                ImageSteal(url,Path.Combine(savedir,NumToNo(i,3)+".jpg")); 
+                i++;  
+            }
+        }
         static string NumToNo(int i, int n)//将一个100以内数字转换成n位的编号
         {
             string r = i.ToString();
