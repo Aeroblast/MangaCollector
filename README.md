@@ -1,10 +1,10 @@
-## MangaCollector
+# MangaCollector
 收集各种平台的图片用
  运行时读取list.txt 和 imglist.txt抓取图片，每行一个命令
  
  必要时读取cookies_yamibo
  
- # list.txt:
+ ## list.txt:
  
  yamibo: 直接放帖子url
  
@@ -14,6 +14,6 @@
  
  bilibili：放bilibili+Fiddler保存的抓取内容（save as Text），命令格式 bilibili:xx.txt
  
-# imglist.txt
+## imglist.txt
  
  直接一行一个url
